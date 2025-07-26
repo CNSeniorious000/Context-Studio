@@ -5,7 +5,12 @@ requires-python = ">=3.13"
 dependencies = [
     "fastapi~=0.116.1",
     "markitdown[all]~=0.1.2",
+    "openai>=1.97.1",
     "uvicorn-hmr~=0.0.9",
+    "numpy>=1.24.0",
+    "scikit-learn>=1.3.0",
+    "tiktoken>=0.5.0",
+    "promptools>=0.1.3.6",
 ]
 
 [tool.ruff]
@@ -37,4 +42,8 @@ reportUnnecessaryTypeIgnore = true
 dev = "uvicorn-hmr --clear"
 
 [dependency-groups]
-dev = ["ruff~=0.12.5"]
+dev = [
+    "pytest>=8.4.1",
+    "pytest-asyncio>=1.1.0",
+    "ruff~=0.12.5",
+]
