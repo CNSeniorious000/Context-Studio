@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import re
@@ -42,21 +43,12 @@ def filter_text(text: str) -> str:
     return filtered_text.strip()
 
 
-async def summarize(text: str) -> str:
-    if not text or not text.strip():
-        raise ValueError("input text is empty.")  # noqa: TRY003
-
-    # 先对文本进行过滤
-    filtered_text = filter_text(text)
-
-    if not filtered_text:
-        raise ValueError("text is empty after filtering.")  # noqa: TRY003
-
+async def condense_text(text: str) -> str:
     try:
         messages = [
             ChatCompletionUserMessageParam(
                 role="user",
-                content=(f"Based on the following text:\n{filtered_text}\nplease summarize the above text in one sentence:\n"),
+                content=(f"Based on the following text:\n{text}\nplease condense the above text (no more than 100 words)\n"),
             )
         ]
 
@@ -66,15 +58,60 @@ async def summarize(text: str) -> str:
             temperature=0,
         )
 
-        if not response.choices:
-            raise ValueError("no choices in response.")  # noqa: TRY003
-
         content = response.choices[0].message.content
-        if not content:
-            raise ValueError("response content is empty.")  # noqa: TRY003
 
-        return content.strip()
+        return content.strip() if content else ""
 
     except Exception:
-        logger.exception("failed to summarize text.")
-        raise ValueError("failed to summarize text.")  # noqa: TRY003
+        return ""
+
+
+async def summarize_text(text: str) -> str:
+    try:
+        messages = [
+            ChatCompletionUserMessageParam(
+                role="user",
+                content=(f"Based on the following text:\n{text}\nplease summarize the above text in one sentence (no more than 100 words)\n"),
+            )
+        ]
+
+        response = await client.chat.completions.create(
+            model="qwen-turbo",
+            messages=messages,
+            temperature=0,
+        )
+
+        content = response.choices[0].message.content
+
+        return content.strip() if content else ""
+
+    except Exception:
+        return ""
+
+
+def split_text(text: str, split_len: int) -> list[str]:
+    return [text[i : i + split_len] for i in range(0, len(text), split_len)]
+
+
+async def summarize(text: str) -> str:
+    if not text or not text.strip():
+        raise ValueError("input text is empty.")  # noqa: TRY003
+
+    # 先对文本进行过滤
+    text = filter_text(text)
+
+    if not text:
+        raise ValueError("text is empty after filtering.")  # noqa: TRY003
+
+    process_len = 10000
+
+    # 对文本进行分段
+    while len(text) >= process_len:
+        texts = split_text(text, process_len)
+        task = [condense_text(text) for text in texts]
+        result = await asyncio.gather(*task)
+        text = "".join(result)
+
+    text = await summarize_text(text)
+
+    return text
