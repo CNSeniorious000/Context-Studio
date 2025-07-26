@@ -3,6 +3,7 @@ name = "context-manager-extractors"
 version = "0.1.0"
 requires-python = ">=3.13"
 dependencies = [
+    "brotli-asgi~=1.4.0",
     "fastapi~=0.116.1",
     "markitdown[all]~=0.1.2",
     "numpy~=2.3.2",
@@ -11,6 +12,7 @@ dependencies = [
     "scikit-learn~=1.7.1",
     "tiktoken~=0.9.0",
     "uvicorn-hmr~=0.0.9",
+    "zstd-asgi~=0.2",
 ]
 
 [tool.ruff]
