@@ -14,59 +14,44 @@ client = AsyncOpenAI(
 
 
 async def summarize(text: str, limit: int) -> str | None:
-    """
-    使用AI对文本进行摘要
-
-    Args:
-        text: 需要摘要的文本
-        limit: 摘要文本的最大字符数限制
-
-    Returns:
-        摘要文本，如果出现错误则返回None
-
-    Raises:
-        ValueError: 当输入参数无效时
-    """
-    # 输入验证
     if not text or not text.strip():
-        raise ValueError("输入文本不能为空")
+        raise ValueError("input text is empty.")  # noqa: TRY003
 
     if limit <= 0:
-        raise ValueError("字符限制必须大于0")
+        raise ValueError("limit must be greater than 0.")  # noqa: TRY003
 
     if limit > 10000:
-        logger.warning(f"字符限制{limit}过大，建议不超过10000")
-
-    # 检查API密钥
-    if not os.getenv("API_KEY"):
-        raise ValueError("未设置API_KEY环境变量")
+        logger.warning(f"limit {limit} is too large, it should be less than 10000.")
 
     try:
-        messages = [ChatCompletionUserMessageParam(role="user", content=f"请总结以下文本，并保证总结后的文本长度不超过{limit}个字符：\n{text}")]
+        messages = [
+            ChatCompletionUserMessageParam(
+                role="user",
+                content=(f"Based on the following text, please summarize it and ensure the length of the summary is less than {limit} characters:\n{text}"),
+            )
+        ]
 
         response = await client.chat.completions.create(
             model="deepseek-v3",
             messages=messages,
-            max_tokens=min(limit * 2, 4000),  # 设置合理的token限制
-            temperature=0.3,  # 降低随机性，提高稳定性
+            max_tokens=min(limit * 2, 4000),
+            temperature=0.3,
         )
 
-        # 检查响应有效性
         if not response.choices:
-            logger.error("API响应中没有选择项")
+            logger.error("no choices in response.")
             return None
 
         content = response.choices[0].message.content
         if not content:
-            logger.error("API响应内容为空")
+            logger.error("response content is empty.")
             return None
 
-        # 检查摘要长度是否符合要求
-        if len(content) > limit * 1.2:  # 允许20%的误差
-            logger.warning(f"摘要长度{len(content)}超过限制{limit}")
+        if len(content) > limit * 1.2:
+            logger.warning(f"summary length {len(content)} exceeds limit {limit}")
 
         return content.strip()
 
     except Exception:
-        logger.exception("摘要生成失败")
+        logger.exception("failed to summarize text.")
         return None
