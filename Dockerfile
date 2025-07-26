@@ -11,7 +11,7 @@ COPY . .
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONDONTWRITEBYTECODE=1
 
-RUN uv sync --compile-bytecode --no-cache
+RUN uv sync --no-cache
 
 ENV PATH="/app/.venv/bin:$PATH"
 
