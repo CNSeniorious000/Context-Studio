@@ -35,3 +35,6 @@ reportUnnecessaryTypeIgnore = true
 
 [tool.m.aliases]
 dev = "uvicorn-hmr --clear"
+
+[dependency-groups]
+dev = ["ruff~=0.12.5"]
