@@ -100,7 +100,7 @@ async def fuzzy_search(query: str, input: str | list[str], limit: int = 100) -> 
     chunks = split_text(text=input) if isinstance(input, str) else input
 
     if not chunks:
-        return "输入文本为空"
+        raise ValueError("input is empty.")  # noqa: TRY003
 
     tasks = []
 
@@ -115,15 +115,14 @@ async def fuzzy_search(query: str, input: str | list[str], limit: int = 100) -> 
     try:
         results = await asyncio.gather(*tasks, return_exceptions=True)
     except Exception as e:
-        print(f"批量获取embeddings时出错: {e}")
-        return "无法获取文本的embeddings"
+        raise ValueError(f"failed to get embeddings: {e!s}") from e  # noqa: TRY003
 
     # 分离查询embedding和chunk embeddings
     query_emb = results[0]
     chunk_results = results[1:]
 
     if query_emb is None or isinstance(query_emb, Exception):
-        return "无法获取查询的embedding"
+        raise ValueError("failed to get query embedding.")  # noqa: TRY003
 
     # 收集成功的chunk embeddings
     chunk_embs = []
@@ -135,7 +134,7 @@ async def fuzzy_search(query: str, input: str | list[str], limit: int = 100) -> 
             valid_chunks.append(chunks[i])
 
     if not chunk_embs:
-        return "无法获取文本的embeddings"
+        raise ValueError("failed to get chunk embeddings.")  # noqa: TRY003
 
     # 计算相似度
     chunk_embs = np.array(chunk_embs)
