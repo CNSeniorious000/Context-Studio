@@ -15,19 +15,17 @@ class FuzzySearchRequest(BaseModel):
     limit: int = 100
 
 
-@app.post("/markitdown/{type}", response_model=str)
-def convert_to_markdown(type: Literal["markdown", "text"], data: bytes = Body(media_type="application/octet-stream")):
+@app.post("/markitdown", response_model=str)
+def convert_to_markdown(data: bytes = Body(media_type="application/octet-stream")):
     from promptools.openai import count_token
 
     from extractors.fallback import md
 
-    result = md.convert(BytesIO(data))
+    result = md.convert(BytesIO(data)).markdown
 
-    text = result.text_content if type == "text" else result.markdown
+    token_count = count_token(result)
 
-    token_count = count_token(text)
-
-    res = PlainTextResponse(text, media_type="text/markdown") if type == "markdown" else PlainTextResponse(text)
+    res = PlainTextResponse(result, media_type="text/markdown")
 
     res.headers["title"] = dumps(result.title)
     res.headers["token-count"] = dumps(token_count)
@@ -35,7 +33,7 @@ def convert_to_markdown(type: Literal["markdown", "text"], data: bytes = Body(me
     return res
 
 
-@app.post("/fuzzy_search", response_class=PlainTextResponse)
+@app.post("/fuzzy_search", response_model=str)
 async def search_text(request: FuzzySearchRequest):
     from processors.fuzzy_search import fuzzy_search
 
