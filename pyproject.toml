@@ -35,7 +35,7 @@ extend-select = [
     "SIM",  # flake8-simplify
     "SLF",  # flake8-self
 ]
-extend-ignore = ["RUF001"]
+extend-ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.pyright]
 typeCheckingMode = "standard"
