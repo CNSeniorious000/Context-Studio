@@ -36,6 +36,4 @@ async def search_text(request: FuzzySearchRequest):
 
     res = PlainTextResponse(result, media_type="text/plain")
 
-    res.headers["title"] = dumps(result.title)
-
     return res
