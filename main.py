@@ -34,15 +34,18 @@ def convert_to_markdown(data: bytes = Body(media_type="application/octet-stream"
     return res
 
 
-@app.post("/fuzzy_search", response_model=str)
-async def search_text(request: FuzzySearchRequest):
+@app.post("/generate_title", response_class=PlainTextResponse)
+async def generate_title(text: str = Body(media_type="text/plain")) -> str:
+    from processors.title import generate_title as title_generator
+
+    return await title_generator(text)
+
+
+@app.post("/fuzzy_search", response_class=PlainTextResponse)
+async def search_text(request: FuzzySearchRequest) -> str:
     from processors.fuzzy_search import fuzzy_search
 
-    result = await fuzzy_search(request.query, request.input, request.limit)
-
-    res = PlainTextResponse(result, media_type="text/plain")
-
-    return res
+    return await fuzzy_search(request.query, request.input, request.limit)
 
 
 if not __debug__:
