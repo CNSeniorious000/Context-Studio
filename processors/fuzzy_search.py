@@ -8,7 +8,7 @@ from promptools.openai import count_token
 from sklearn.metrics.pairwise import cosine_similarity
 
 client = AsyncOpenAI(
-    api_key=os.getenv("API_KEY"),
+    api_key=os.getenv("ALIYUN_API_KEY"),
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
 )
 

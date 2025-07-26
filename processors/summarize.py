@@ -8,8 +8,18 @@ from openai.types.chat.chat_completion_user_message_param import ChatCompletionU
 
 logger = logging.getLogger(__name__)
 
-client = AsyncOpenAI(
-    api_key=os.getenv("API_KEY"),
+# client = AsyncOpenAI(
+#     api_key=os.getenv("API_KEY"),
+#     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+# )
+
+pclient = AsyncOpenAI(
+    api_key=os.getenv("PPIO_API_KEY"),
+    base_url="https://api.ppinfra.com/v3/openai",
+)
+
+aclient = AsyncOpenAI(
+    api_key=os.getenv("ALIYUN_API_KEY"),
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
 )
 
@@ -52,7 +62,7 @@ async def condense_text(text: str) -> str:
             )
         ]
 
-        response = await client.chat.completions.create(
+        response = await aclient.chat.completions.create(
             model="qwen-turbo",
             messages=messages,
             temperature=0,
@@ -75,8 +85,8 @@ async def summarize_text(text: str) -> str:
             )
         ]
 
-        response = await client.chat.completions.create(
-            model="qwen-turbo",
+        response = await pclient.chat.completions.create(
+            model="deepseek/deepseek-v3-0324",
             messages=messages,
             temperature=0,
         )
