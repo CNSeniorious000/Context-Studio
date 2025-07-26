@@ -67,6 +67,6 @@ async def summarize(text: str, limit: int) -> str | None:
 
         return content.strip()
 
-    except Exception as e:
-        logger.exception(f"摘要生成失败: {e!s}")
+    except Exception:
+        logger.exception("摘要生成失败")
         return None
