@@ -11,7 +11,7 @@ app = FastAPI(title="Context Manager Extractor API")
 class FuzzySearchRequest(BaseModel):
     query: str
     input: str | list[str]
-    limit: int = 100
+    token_limit: int = 100
 
 
 @app.post("/markitdown", response_model=str)
@@ -45,7 +45,7 @@ async def generate_title(text: str = Body(media_type="text/plain")) -> str:
 async def search_text(request: FuzzySearchRequest) -> str:
     from processors.fuzzy_search import fuzzy_search
 
-    return await fuzzy_search(request.query, request.input, request.limit)
+    return await fuzzy_search(request.query, request.input, request.token_limit)
 
 
 if not __debug__:
