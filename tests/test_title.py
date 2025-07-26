@@ -5,7 +5,7 @@ from processors.title import generate_title
 
 @pytest.fixture
 def text():
-    with open("data/file.txt") as f:
+    with open("data/file3.txt") as f:
         text = f.read()
     return text
 
