@@ -15,7 +15,8 @@ client = AsyncOpenAI(
 
 @dataclass
 class Chunk:
-    id: int
+    line_id: int
+    line_len: int
     text: str
     tokens: int
     embedding: np.ndarray | None = None
@@ -24,7 +25,7 @@ class Chunk:
 def split_text(input: str | list[str], chunk_size: int = 200) -> list[Chunk]:
     # if text is a list, return a list of dicts
     if isinstance(input, list):
-        chunks = [Chunk(id=i, text=line, tokens=count_token(line)) for i, line in enumerate(input)]
+        chunks = [Chunk(line_id=i, line_len=1, text=line, tokens=count_token(line)) for i, line in enumerate(input)]
         return chunks
 
     if not input.strip():
@@ -32,22 +33,32 @@ def split_text(input: str | list[str], chunk_size: int = 200) -> list[Chunk]:
 
     # if input is a string, split it into chunks
     chunks = []
-    lines = input.splitlines(keepends=True)
+    lines_splited = input.splitlines(keepends=True)
+    lines = []
+    for line in lines_splited:
+        if lines and line == "\n":
+            lines[-1] += "\n"
+        else:
+            lines.append(line)
+
     current_chunk = ""
     current_tokens = 0
-    current_id = 0
+    current_len_id = 0
+    current_line_len = 0
 
-    for line in lines:
+    for i, line in enumerate(lines):
         line_tokens = count_token(line)
 
         # if the current line will exceed the chunk_size, save the current chunk
         if current_tokens + line_tokens > chunk_size and current_chunk.strip():
-            chunks.append(Chunk(id=current_id, text=current_chunk.strip(), tokens=current_tokens))
-            current_id += 1
+            chunks.append(Chunk(line_id=current_len_id, line_len=current_line_len, text=current_chunk.strip(), tokens=current_tokens))
             current_chunk = line
             current_tokens = line_tokens
+            current_line_len = 1
+            current_len_id = i
         else:
             # otherwise, add the line to the current chunk
+            current_line_len += 1
             if current_chunk:
                 current_chunk += line
                 current_tokens += line_tokens
@@ -57,7 +68,7 @@ def split_text(input: str | list[str], chunk_size: int = 200) -> list[Chunk]:
 
     # add the last chunk
     if current_chunk.strip():
-        chunks.append(Chunk(id=current_id, text=current_chunk.strip(), tokens=current_tokens))
+        chunks.append(Chunk(line_id=current_len_id, line_len=current_line_len, text=current_chunk.strip(), tokens=current_tokens))
 
     if not chunks:
         raise ValueError("input is empty.")  # noqa: TRY003
@@ -84,7 +95,15 @@ async def update_chunk_embeddings(chunks: list[Chunk], timeout: float = 6.0):
     emb_results = await asyncio.gather(*tasks, return_exceptions=True)
     for i, emb in enumerate(emb_results):
         if isinstance(emb, np.ndarray):
-            valid_chunks.append(Chunk(id=chunks[i].id, text=chunks[i].text, tokens=chunks[i].tokens, embedding=emb))
+            valid_chunks.append(
+                Chunk(
+                    line_id=chunks[i].line_id,
+                    line_len=chunks[i].line_len,
+                    text=chunks[i].text,
+                    tokens=chunks[i].tokens,
+                    embedding=emb,
+                )
+            )
     return valid_chunks
 
 
@@ -101,15 +120,16 @@ def rerank_chunk_with_similarity(query_emb: np.ndarray, chunks: list[Chunk]):
 
 
 def sorted_chunk_with_id(chunks: list[Chunk]):
-    sorted_chunks = sorted(chunks, key=lambda x: x.id)
+    sorted_chunks = sorted(chunks, key=lambda x: x.line_id)
     return sorted_chunks
 
 
 def merged_chunk_with_id(chunks: list[Chunk]):
     merged_chunks = []
     for chunk in chunks:
-        if merged_chunks and merged_chunks[-1].id + 1 == chunk.id:
+        if merged_chunks and merged_chunks[-1].line_id + merged_chunks[-1].line_len == chunk.line_id:
             merged_chunks[-1].text += chunk.text
+            merged_chunks[-1].line_len += chunk.line_len
         else:
             merged_chunks.append(chunk)
     return merged_chunks
@@ -133,6 +153,25 @@ def select_chunks_by_limit(reranked_chunks: list[Chunk], limit: int) -> list[Chu
         selected_chunks = [reranked_chunks[0]]
 
     return selected_chunks
+
+
+def join_chunks(chunks: list[Chunk], chunks_len: int) -> str:
+    joined_chunks_str = ""
+    for i, chunk in enumerate(chunks):
+        if i == 0:
+            cut_line_len = chunk.line_id
+        else:
+            pre_chunk = chunks[i - 1]
+            cut_line_len = chunk.line_id - pre_chunk.line_id - pre_chunk.line_len
+        if cut_line_len > 0:
+            joined_chunks_str += f"[... skip {cut_line_len} lines ...]\n\n"
+        joined_chunks_str += chunk.text + "\n\n"
+
+    cut_line_len = chunks_len - chunks[-1].line_id - chunks[-1].line_len - 1
+    if cut_line_len > 0:
+        joined_chunks_str += f"[... skip {cut_line_len} lines ...]"
+
+    return joined_chunks_str
 
 
 async def fuzzy_search(query: str, input: str | list[str], token_limit: int = 500) -> str:
@@ -159,5 +198,5 @@ async def fuzzy_search(query: str, input: str | list[str], token_limit: int = 50
     merged_chunks = merged_chunk_with_id(sorted_chunks)
 
     # join the chunks
-    result = "\n...\n".join([chunk.text for chunk in merged_chunks])
+    result = join_chunks(merged_chunks, chunks[-1].line_id + chunks[-1].line_len - 1)
     return result
