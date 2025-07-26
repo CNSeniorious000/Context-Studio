@@ -46,10 +46,6 @@ async def search_text(request: FuzzySearchRequest):
 
 
 if not __debug__:
-    from brotli_asgi import BrotliMiddleware
     from starlette.middleware.cors import CORSMiddleware
-    from zstd_asgi import ZstdMiddleware
 
     app.add_middleware(CORSMiddleware, allow_origins="*", allow_headers="*")
-    app.add_middleware(ZstdMiddleware, threads=-1, gzip_fallback=False)
-    app.add_middleware(BrotliMiddleware)
