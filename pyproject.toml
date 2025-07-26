@@ -31,7 +31,7 @@ extend-select = [
 
 [tool.pyright]
 typeCheckingMode = "standard"
-reportUnnecessaryTypeIgnore = true
+reportUnnecessaryTypeIgnoreComment = true
 
 [tool.m.aliases]
 dev = "uvicorn-hmr --clear"
