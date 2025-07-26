@@ -15,6 +15,7 @@ client = AsyncOpenAI(
 
 @dataclass
 class Chunk:
+    id: int
     text: str
     tokens: int
     embedding: np.ndarray | None = None
@@ -23,7 +24,7 @@ class Chunk:
 def split_text(input: str | list[str], chunk_size: int = 200) -> list[Chunk]:
     # if text is a list, return a list of dicts
     if isinstance(input, list):
-        chunks = [Chunk(text=line, tokens=count_token(line)) for line in input]
+        chunks = [Chunk(id=i, text=line, tokens=count_token(line)) for i, line in enumerate(input)]
         return chunks
 
     if not input.strip():
@@ -34,13 +35,15 @@ def split_text(input: str | list[str], chunk_size: int = 200) -> list[Chunk]:
     lines = input.splitlines(keepends=True)
     current_chunk = ""
     current_tokens = 0
+    current_id = 0
 
     for line in lines:
         line_tokens = count_token(line)
 
         # if the current line will exceed the chunk_size, save the current chunk
         if current_tokens + line_tokens > chunk_size and current_chunk.strip():
-            chunks.append(Chunk(text=current_chunk.strip(), tokens=current_tokens))
+            chunks.append(Chunk(id=current_id, text=current_chunk.strip(), tokens=current_tokens))
+            current_id += 1
             current_chunk = line
             current_tokens = line_tokens
         else:
@@ -54,7 +57,7 @@ def split_text(input: str | list[str], chunk_size: int = 200) -> list[Chunk]:
 
     # add the last chunk
     if current_chunk.strip():
-        chunks.append(Chunk(text=current_chunk.strip(), tokens=current_tokens))
+        chunks.append(Chunk(id=current_id, text=current_chunk.strip(), tokens=current_tokens))
 
     if not chunks:
         raise ValueError("input is empty.")  # noqa: TRY003
@@ -81,11 +84,11 @@ async def update_chunk_embeddings(chunks: list[Chunk], timeout: float = 6.0):
     emb_results = await asyncio.gather(*tasks, return_exceptions=True)
     for i, emb in enumerate(emb_results):
         if isinstance(emb, np.ndarray):
-            valid_chunks.append(Chunk(text=chunks[i].text, tokens=chunks[i].tokens, embedding=emb))
+            valid_chunks.append(Chunk(id=chunks[i].id, text=chunks[i].text, tokens=chunks[i].tokens, embedding=emb))
     return valid_chunks
 
 
-def rerank_chunk(query_emb: np.ndarray, chunks: list[Chunk]):
+def rerank_chunk_with_similarity(query_emb: np.ndarray, chunks: list[Chunk]):
     chunk_embs = np.array([chunk.embedding for chunk in chunks])
     scores = cosine_similarity([query_emb], chunk_embs)[0]
     sorted_indices = np.argsort(scores)[::-1]
@@ -97,7 +100,22 @@ def rerank_chunk(query_emb: np.ndarray, chunks: list[Chunk]):
     return reranked_chunks
 
 
-def select_chunks_by_limit(reranked_chunks: list[Chunk], limit: int) -> str:
+def sorted_chunk_with_id(chunks: list[Chunk]):
+    sorted_chunks = sorted(chunks, key=lambda x: x.id)
+    return sorted_chunks
+
+
+def merged_chunk_with_id(chunks: list[Chunk]):
+    merged_chunks = []
+    for chunk in chunks:
+        if merged_chunks and merged_chunks[-1].id + 1 == chunk.id:
+            merged_chunks[-1].text += chunk.text
+        else:
+            merged_chunks.append(chunk)
+    return merged_chunks
+
+
+def select_chunks_by_limit(reranked_chunks: list[Chunk], limit: int) -> list[Chunk]:
     total_tokens = 0
     selected_chunks = []
 
@@ -114,11 +132,10 @@ def select_chunks_by_limit(reranked_chunks: list[Chunk], limit: int) -> str:
     if not selected_chunks:
         selected_chunks = [reranked_chunks[0]]
 
-    result = "\n".join([chunk.text for chunk in selected_chunks])
-    return result
+    return selected_chunks
 
 
-async def fuzzy_search(query: str, input: str | list[str], limit: int = 50) -> str:
+async def fuzzy_search(query: str, input: str | list[str], token_limit: int = 500) -> str:
     # if input is a string, split it into chunks
     chunks = split_text(input=input)
 
@@ -129,9 +146,18 @@ async def fuzzy_search(query: str, input: str | list[str], limit: int = 50) -> s
 
     chunks = await update_chunk_embeddings(chunks)
 
-    # rerank the chunks
-    reranked_chunks = rerank_chunk(query_emb, chunks)
+    # rerank the chunks by similarity
+    reranked_chunks = rerank_chunk_with_similarity(query_emb, chunks)
 
-    # select the chunks based on the limit
-    result = select_chunks_by_limit(reranked_chunks, limit)
+    # select the chunks by token limit
+    selected_chunks = select_chunks_by_limit(reranked_chunks, token_limit)
+
+    # sorted the chunks by id
+    sorted_chunks = sorted_chunk_with_id(selected_chunks)
+
+    # merged the chunks with adjacent id
+    merged_chunks = merged_chunk_with_id(sorted_chunks)
+
+    # join the chunks
+    result = "\n...\n".join([chunk.text for chunk in merged_chunks])
     return result
