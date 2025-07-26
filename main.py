@@ -19,6 +19,7 @@ def convert_to_markdown(data: bytes = Body(media_type="application/octet-stream"
     from promptools.openai import count_token
 
     from extractors.fallback import md
+    from processors.title import generate_title
 
     result = md.convert(BytesIO(data))
 
@@ -28,7 +29,9 @@ def convert_to_markdown(data: bytes = Body(media_type="application/octet-stream"
 
     res = PlainTextResponse(text, media_type="text/markdown")
 
-    res.headers["title"] = dumps(result.title)
+    title = generate_title(text)
+
+    res.headers["title"] = dumps(title)
     res.headers["token-count"] = dumps(token_count)
 
     return res
