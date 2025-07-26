@@ -48,6 +48,13 @@ async def search_text(request: FuzzySearchRequest) -> str:
     return await fuzzy_search(request.query, request.input, request.token_limit)
 
 
+@app.post("/summarize", response_class=PlainTextResponse)
+async def summarize(text: str = Body(media_type="text/plain")) -> str:
+    from processors.summarize import summarize
+
+    return await summarize(text)
+
+
 if not __debug__:
     from starlette.middleware.cors import CORSMiddleware
 
