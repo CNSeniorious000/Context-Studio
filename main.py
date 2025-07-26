@@ -51,4 +51,4 @@ async def search_text(request: FuzzySearchRequest):
 if not __debug__:
     from starlette.middleware.cors import CORSMiddleware
 
-    app.add_middleware(CORSMiddleware, allow_origins="*", allow_headers="*")
+    app.add_middleware(CORSMiddleware, allow_origins="*", allow_headers="*", allow_methods="*")
