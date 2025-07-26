@@ -5,7 +5,7 @@ from processors.summarize import summarize
 
 @pytest.fixture
 def text():
-    with open("data/file3.txt") as f:
+    with open("data/file6.txt") as f:
         text = f.read()
     return text
 

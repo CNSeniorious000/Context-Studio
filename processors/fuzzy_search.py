@@ -171,7 +171,7 @@ def join_chunks(chunks: list[Chunk], chunks_len: int) -> str:
 
     cut_line_len = chunks_len - chunks[-1].line_id - chunks[-1].line_len - 1
     if cut_line_len > 0:
-        joined_chunks_str += f"[... skip {cut_line_len} lines ...]"
+        joined_chunks_str += f"\n\n\n[... skip {cut_line_len} lines ...]"
 
     return joined_chunks_str
 
