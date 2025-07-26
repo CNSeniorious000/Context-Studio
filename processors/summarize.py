@@ -4,7 +4,6 @@ import os
 from openai import AsyncOpenAI
 from openai.types.chat.chat_completion_user_message_param import ChatCompletionUserMessageParam
 
-# 设置日志
 logger = logging.getLogger(__name__)
 
 client = AsyncOpenAI(
@@ -23,6 +22,9 @@ async def summarize(text: str, limit: int) -> str | None:
     if limit > 10000:
         logger.warning(f"limit {limit} is too large, it should be less than 10000.")
 
+    if len(text) <= limit:
+        return text
+
     try:
         messages = [
             ChatCompletionUserMessageParam(
@@ -35,7 +37,7 @@ async def summarize(text: str, limit: int) -> str | None:
             model="deepseek-v3",
             messages=messages,
             max_tokens=min(limit * 2, 4000),
-            temperature=0.3,
+            temperature=0,
         )
 
         if not response.choices:
