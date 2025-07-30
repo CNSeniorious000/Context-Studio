@@ -5,7 +5,7 @@ from processors.fuzzy_search import fuzzy_search
 
 @pytest.fixture
 def text():
-    with open("data/file6.txt") as f:
+    with open("data/file5.txt") as f:
         text = f.read()
     return text
 

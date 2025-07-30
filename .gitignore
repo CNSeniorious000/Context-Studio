@@ -3,6 +3,7 @@ __pycache__/
 build/
 dist/
 data/
+cache/
 wheels/
 *.egg-info
 uv.lock

@@ -1,6 +1,9 @@
 import asyncio
+import hashlib
 import os
+import pickle
 from dataclasses import dataclass
+from pathlib import Path
 
 import numpy as np
 from openai import AsyncOpenAI
@@ -20,6 +23,39 @@ class Chunk:
     text: str
     tokens: int
     embedding: np.ndarray | None = None
+
+
+def create_file_name(text: str | list[str], algorithm: str = "sha256") -> Path:
+    if isinstance(text, list):
+        text = "".join(text)
+    hash = hashlib.new(algorithm)
+    hash.update(text.encode("utf-8"))
+    return Path(f"{hash.hexdigest()}.pkl")
+
+
+def get_cached_chunks(text: str | list[str]) -> list[Chunk]:
+    if isinstance(text, list):
+        text = "".join(text)
+    file_name = create_file_name(text)
+    cache_dir = Path("cache/chunks")
+    if (cache_dir / file_name).exists():
+        with Path(cache_dir / file_name).open("rb") as cache_file:
+            return pickle.load(cache_file)
+    return []
+
+
+def cache_chunks(text: str | list[str], chunks: list[Chunk]):
+    if isinstance(text, list):
+        text = "".join(text)
+    file_name = create_file_name(text)
+    cache_dir = Path("cache/chunks")
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    if (cache_dir / file_name).exists():
+        return
+
+    with Path(cache_dir / file_name).open("wb") as cache_file:
+        pickle.dump(chunks, cache_file)
 
 
 def split_text(input: str | list[str], chunk_size: int = 200) -> list[Chunk]:
@@ -76,22 +112,23 @@ def split_text(input: str | list[str], chunk_size: int = 200) -> list[Chunk]:
     return chunks
 
 
-async def get_embedding(text: str) -> np.ndarray | None:
+async def get_embedding(text: str) -> np.ndarray:
     try:
         completion = await client.embeddings.create(
             model="text-embedding-v4",
             input=text,
             dimensions=1024,
             encoding_format="float",
+            # timeout=timeout,
         )
         return np.array(completion.data[0].embedding)
     except Exception:
-        return None
+        raise ValueError("failed to get embedding.")  # noqa: TRY003
 
 
 async def update_chunk_embeddings(chunks: list[Chunk], timeout: float = 6.0):
     valid_chunks = []
-    tasks = [asyncio.wait_for(get_embedding(chunk.text), timeout=timeout) for chunk in chunks]
+    tasks = [get_embedding(chunk.text) for chunk in chunks]
     emb_results = await asyncio.gather(*tasks, return_exceptions=True)
     for i, emb in enumerate(emb_results):
         if isinstance(emb, np.ndarray):
@@ -105,6 +142,17 @@ async def update_chunk_embeddings(chunks: list[Chunk], timeout: float = 6.0):
                 )
             )
     return valid_chunks
+
+
+async def get_chunks(text: str | list[str]) -> list[Chunk]:
+    cached_chunks = get_cached_chunks(text)
+    if cached_chunks:
+        return cached_chunks
+
+    chunks = split_text(text)
+    chunks = await update_chunk_embeddings(chunks)
+    cache_chunks(text, chunks)
+    return chunks
 
 
 def rerank_chunk_with_similarity(query_emb: np.ndarray, chunks: list[Chunk]):
@@ -178,14 +226,10 @@ def join_chunks(chunks: list[Chunk], chunks_len: int) -> str:
 
 async def fuzzy_search(query: str, input: str | list[str], token_limit: int = 500) -> str:
     # if input is a string, split it into chunks
-    chunks = split_text(input=input)
+    chunks = await get_chunks(input)
 
     # get the query embedding and chunk embeddings
     query_emb = await get_embedding(query)
-    if query_emb is None:
-        raise ValueError("failed to get query embedding.")  # noqa: TRY003
-
-    chunks = await update_chunk_embeddings(chunks)
 
     # rerank the chunks by similarity
     reranked_chunks = rerank_chunk_with_similarity(query_emb, chunks)
@@ -201,4 +245,5 @@ async def fuzzy_search(query: str, input: str | list[str], token_limit: int = 50
 
     # join the chunks
     result = join_chunks(merged_chunks, chunks[-1].line_id + chunks[-1].line_len - 1)
+
     return result
