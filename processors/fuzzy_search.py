@@ -69,9 +69,9 @@ def split_text(input: str | list[str], chunk_size: int = 200) -> list[Chunk]:
 
     # if input is a string, split it into chunks
     chunks = []
-    lines_splited = input.splitlines(keepends=True)
+    lines_split = input.splitlines(keepends=True)
     lines = []
-    for line in lines_splited:
+    for line in lines_split:
         if lines and line == "\n":
             lines[-1] += "\n"
         else:
