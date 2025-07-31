@@ -3,15 +3,12 @@ import pytest
 from processors.fuzzy_search import fuzzy_search
 
 
-@pytest.fixture
-def text():
-    with open("data/file5.txt") as f:
-        text = f.read()
-    return text
-
-
 @pytest.mark.asyncio
-async def test_fuzzy_search(text: str):
-    result = await fuzzy_search("what is this book about", text, token_limit=2000)
+async def test_fuzzy_search(search_parameters: dict):
+    result = await fuzzy_search(
+        query=search_parameters["query"],
+        input=search_parameters["text"],
+        token_limit=search_parameters["token_limit"],
+    )
     print(result)
     assert result is not None
