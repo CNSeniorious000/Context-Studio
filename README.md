@@ -65,7 +65,7 @@ Context Studio 的模糊搜索功能采用基于语义相似度的智能文本�
 - **Web 框架**：[FastAPI](https://fastapi.tiangolo.com/) - 高性能异步 Python Web 框架
 - **文件处理**：[MarkItDown](https://github.com/microsoft/markitdown) - 多格式文件到 Markdown 的转换工具
 - **AI 模型**：
-  - [OpenAI API](https://platform.openai.com/)（通过 PPIO 基础设施）- 提供标题生成和摘要功能
+  - [PPIO LLM API](https://ppio.com/ai-computing/llm-api) - 提供标题生成和摘要功能
   - [阿里云通义千问 `text-embedding-v4`](https://tongyi.aliyun.com/) - 用于模糊搜索中的文本向量（Embedding）生成，实现语义相似度计算
 - **文本处理**：
   - [`tiktoken`](https://github.com/openai/tiktoken) - Token 计算
@@ -124,4 +124,4 @@ pytest
 
 ## 相关项目
 
-- [Context-Studio-FE](https://github.com/CNSeniorious000/Context-Studio-FE) - 前端用户界面，基于 Svelte 构建的现代化 Web 应用
+- [Context-Studio-FE](https://github.com/CNSeniorious000/Context-Studio-FE) - 基于 Svelte 构建的 Web 前端
