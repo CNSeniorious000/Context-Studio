@@ -1,7 +1,5 @@
 """Test configuration settings."""
 
-import pytest
-
 from config import ai_client_settings, app_settings, model_settings, processing_settings
 
 
@@ -44,23 +42,23 @@ def test_app_settings():
 
 def test_client_instantiation():
     """Test that clients can be instantiated with configuration settings."""
-    from processors.title import client as title_client
-    from processors.summarize import aclient, pclient
     from processors.fuzzy_search import client as search_client
+    from processors.summarize import aclient, pclient
+    from processors.title import client as title_client
 
     # Test that clients have the correct API keys and base URLs
     # Note: OpenAI client normalizes URLs by adding trailing slash
     assert title_client.api_key == ai_client_settings.ppio_api_key
-    assert str(title_client.base_url).rstrip('/') == ai_client_settings.ppio_base_url
+    assert str(title_client.base_url).rstrip("/") == ai_client_settings.ppio_base_url
 
     assert pclient.api_key == ai_client_settings.ppio_api_key
-    assert str(pclient.base_url).rstrip('/') == ai_client_settings.ppio_base_url
+    assert str(pclient.base_url).rstrip("/") == ai_client_settings.ppio_base_url
 
     assert aclient.api_key == ai_client_settings.aliyun_api_key
-    assert str(aclient.base_url).rstrip('/') == ai_client_settings.aliyun_base_url
+    assert str(aclient.base_url).rstrip("/") == ai_client_settings.aliyun_base_url
 
     assert search_client.api_key == ai_client_settings.aliyun_api_key
-    assert str(search_client.base_url).rstrip('/') == ai_client_settings.aliyun_base_url
+    assert str(search_client.base_url).rstrip("/") == ai_client_settings.aliyun_base_url
 
 
 def test_main_app_integration():
