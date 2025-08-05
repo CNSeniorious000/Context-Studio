@@ -5,13 +5,15 @@ from fastapi import Body, FastAPI
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel
 
-app = FastAPI(title="Context Manager Extractor API")
+from config import app_settings, processing_settings
+
+app = FastAPI(title=app_settings.app_title)
 
 
 class FuzzySearchRequest(BaseModel):
     query: str
     input: str | list[str]
-    token_limit: int = 100
+    token_limit: int = processing_settings.default_token_limit
 
 
 @app.post("/markitdown", response_model=str)
@@ -58,4 +60,5 @@ async def summarize(text: str = Body(media_type="text/plain")) -> str:
 if not __debug__:
     from starlette.middleware.cors import CORSMiddleware
 
-    app.add_middleware(CORSMiddleware, allow_origins="*", allow_headers="*", allow_methods="*")
+    if app_settings.cors_enabled:
+        app.add_middleware(CORSMiddleware, allow_origins="*", allow_headers="*", allow_methods="*")

@@ -1,6 +1,5 @@
 import asyncio
 import hashlib
-import os
 import pickle
 from dataclasses import dataclass
 from pathlib import Path
@@ -10,9 +9,11 @@ from openai import AsyncOpenAI
 from promptools.openai import count_token
 from sklearn.metrics.pairwise import cosine_similarity
 
+from config import ai_client_settings, model_settings, processing_settings
+
 client = AsyncOpenAI(
-    api_key=os.getenv("ALIYUN_API_KEY"),
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+    api_key=ai_client_settings.aliyun_api_key,
+    base_url=ai_client_settings.aliyun_base_url,
 )
 
 
@@ -37,7 +38,7 @@ def get_cached_chunks(text: str | list[str]) -> list[Chunk]:
     if isinstance(text, list):
         text = "".join(text)
     file_name = create_file_name(text)
-    cache_dir = Path("cache/chunks")
+    cache_dir = Path(processing_settings.cache_directory)
     if (cache_dir / file_name).exists():
         with Path(cache_dir / file_name).open("rb") as cache_file:
             return pickle.load(cache_file)
@@ -48,7 +49,7 @@ def cache_chunks(text: str | list[str], chunks: list[Chunk]):
     if isinstance(text, list):
         text = "".join(text)
     file_name = create_file_name(text)
-    cache_dir = Path("cache/chunks")
+    cache_dir = Path(processing_settings.cache_directory)
     cache_dir.mkdir(parents=True, exist_ok=True)
 
     if (cache_dir / file_name).exists():
@@ -58,7 +59,10 @@ def cache_chunks(text: str | list[str], chunks: list[Chunk]):
         pickle.dump(chunks, cache_file)
 
 
-def split_text(input: str | list[str], chunk_size: int = 200) -> list[Chunk]:
+def split_text(input: str | list[str], chunk_size: int | None = None) -> list[Chunk]:
+    if chunk_size is None:
+        chunk_size = processing_settings.fuzzy_search_chunk_size
+
     # if text is a list, return a list of dicts
     if isinstance(input, list):
         chunks = [Chunk(line_id=i, line_len=1, text=line, tokens=count_token(line)) for i, line in enumerate(input)]
@@ -115,9 +119,9 @@ def split_text(input: str | list[str], chunk_size: int = 200) -> list[Chunk]:
 async def get_embedding(text: str) -> np.ndarray:
     try:
         completion = await client.embeddings.create(
-            model="text-embedding-v4",
+            model=model_settings.embedding_model,
             input=text,
-            dimensions=1024,
+            dimensions=model_settings.embedding_dimensions,
             encoding_format="float",
             # timeout=timeout,
         )
@@ -126,7 +130,7 @@ async def get_embedding(text: str) -> np.ndarray:
         raise ValueError("failed to get embedding.")  # noqa: TRY003
 
 
-async def update_chunk_embeddings(chunks: list[Chunk], timeout: float = 6.0):
+async def update_chunk_embeddings(chunks: list[Chunk]):
     valid_chunks = []
     tasks = [get_embedding(chunk.text) for chunk in chunks]
     emb_results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -224,7 +228,10 @@ def join_chunks(chunks: list[Chunk], chunks_len: int) -> str:
     return joined_chunks_str
 
 
-async def fuzzy_search(query: str, input: str | list[str], token_limit: int = 500) -> str:
+async def fuzzy_search(query: str, input: str | list[str], token_limit: int | None = None) -> str:
+    if token_limit is None:
+        token_limit = processing_settings.default_token_limit
+
     # if input is a string, split it into chunks
     chunks = await get_chunks(input)
 
