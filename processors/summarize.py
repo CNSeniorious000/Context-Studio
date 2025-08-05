@@ -1,26 +1,22 @@
 import asyncio
 import logging
-import os
 import re
 
 from openai import AsyncOpenAI
 from openai.types.chat.chat_completion_user_message_param import ChatCompletionUserMessageParam
 
+from config import ai_client_settings, model_settings, processing_settings
+
 logger = logging.getLogger(__name__)
 
-# client = AsyncOpenAI(
-#     api_key=os.getenv("API_KEY"),
-#     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
-# )
-
 pclient = AsyncOpenAI(
-    api_key=os.getenv("PPIO_API_KEY"),
-    base_url="https://api.ppinfra.com/v3/openai",
+    api_key=ai_client_settings.ppio_api_key,
+    base_url=ai_client_settings.ppio_base_url,
 )
 
 aclient = AsyncOpenAI(
-    api_key=os.getenv("ALIYUN_API_KEY"),
-    base_url="https://dashscope.aliyuncs.com/compatible-mode/v1",
+    api_key=ai_client_settings.aliyun_api_key,
+    base_url=ai_client_settings.aliyun_base_url,
 )
 
 
@@ -58,14 +54,14 @@ async def condense_text(text: str) -> str:
         messages = [
             ChatCompletionUserMessageParam(
                 role="user",
-                content=(f"Based on the following text:\n{text}\nplease condense the above text (no more than 100 words)\n"),
+                content=(f"Based on the following text:\n{text}\nplease condense the above text (no more than {processing_settings.condense_max_words} words)\n"),
             )
         ]
 
         response = await aclient.chat.completions.create(
-            model="qwen-turbo",
+            model=model_settings.condense_model,
             messages=messages,
-            temperature=0,
+            temperature=model_settings.summarize_temperature,
         )
 
         content = response.choices[0].message.content
@@ -81,14 +77,14 @@ async def summarize_text(text: str) -> str:
         messages = [
             ChatCompletionUserMessageParam(
                 role="user",
-                content=(f"Based on the following text:\n{text}\nplease summarize the above text in one sentence (no more than 100 words)\n"),
+                content=(f"Based on the following text:\n{text}\nplease summarize the above text in one sentence (no more than {processing_settings.condense_max_words} words)\n"),
             )
         ]
 
         response = await pclient.chat.completions.create(
-            model="deepseek/deepseek-v3-0324",
+            model=model_settings.summarize_model,
             messages=messages,
-            temperature=0,
+            temperature=model_settings.summarize_temperature,
         )
 
         content = response.choices[0].message.content
@@ -113,7 +109,7 @@ async def summarize(text: str) -> str:
     if not text:
         raise ValueError("text is empty after filtering.")  # noqa: TRY003
 
-    process_len = 10000
+    process_len = processing_settings.summarize_process_length
 
     # 对文本进行分段
     while len(text) >= process_len:

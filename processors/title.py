@@ -1,19 +1,20 @@
 import logging
-import os
 
 from openai import AsyncOpenAI
 from openai.types.chat.chat_completion_user_message_param import ChatCompletionUserMessageParam
 
+from config import ai_client_settings, model_settings, processing_settings
+
 logger = logging.getLogger(__name__)
 
 client = AsyncOpenAI(
-    api_key=os.getenv("PPIO_API_KEY"),
-    base_url="https://api.ppinfra.com/v3/openai",
+    api_key=ai_client_settings.ppio_api_key,
+    base_url=ai_client_settings.ppio_base_url,
 )
 
 
 async def generate_title(text: str) -> str:
-    text = text[:2000]
+    text = text[: processing_settings.title_text_limit]
     messages = [
         ChatCompletionUserMessageParam(
             role="user",
@@ -32,10 +33,10 @@ async def generate_title(text: str) -> str:
     ]
 
     response = await client.chat.completions.create(
-        model="deepseek/deepseek-v3-0324",
+        model=model_settings.title_model,
         messages=messages,
-        max_tokens=1024,
-        temperature=0,
+        max_tokens=model_settings.title_max_tokens,
+        temperature=model_settings.title_temperature,
     )
     title = response.choices[0].message.content
 

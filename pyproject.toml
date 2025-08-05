@@ -8,6 +8,7 @@ dependencies = [
     "numpy~=2.3.2",
     "openai~=1.97.1",
     "promptools~=0.1.3.6",
+    "pydantic-settings~=2.10.1",
     "scikit-learn~=1.7.1",
     "tiktoken~=0.9.0",
     "uvicorn-hmr~=0.0.9",
